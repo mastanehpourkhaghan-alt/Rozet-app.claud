@@ -266,6 +266,10 @@
 
     <!-- ACCOUNTING -->
     <section class="view" id="view-accounting">
+      <div class="trend" style="margin-bottom:16px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <label style="font-size:12px; color:var(--ink-soft); flex:none;">نرخ دلار (تومان)</label>
+        <input type="number" id="usd-rate-input" inputmode="numeric" style="width:120px; font-family:inherit; font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); text-align:left;">
+      </div>
       <div class="section-title">حسابداری <span class="count" id="acc-count"></span></div>
       <div id="acc-list"></div>
     </section>
@@ -330,8 +334,12 @@
       <button type="button" class="sel-income" id="tx-type-income">درآمد</button>
       <button type="button" class="sel-expense" id="tx-type-expense">هزینه</button>
     </div>
+    <div class="type-toggle" id="tx-currency-toggle" style="display:none;">
+      <button type="button" class="sel-income" id="tx-cur-toman">تومان</button>
+      <button type="button" class="sel-income" id="tx-cur-usd">دلار</button>
+    </div>
     <div class="field">
-      <label>مبلغ (تومان)</label>
+      <label id="tx-amount-label">مبلغ (تومان)</label>
       <input type="number" id="tx-amount" inputmode="numeric" placeholder="مثلا ۵۵۰۰۰۰">
     </div>
     <div class="field">
@@ -488,6 +496,8 @@ let currentTxType = 'income';
 let activeView = 'dashboard';
 let activeCustSub = 'customer';
 let currentCustModalType = 'customer';
+let currentTxCurrency = 'toman';
+let exchangeRate = 230000; // toman per 1 USD — user-editable
 
 /* storage: use Claude's artifact storage when available (inside claude.ai),
    otherwise fall back to localStorage so the app also works as a standalone
@@ -519,6 +529,14 @@ async function loadState(){
 
   // backward compatibility: old customers had no type field
   state.customers.forEach(c => { if(!c.type) c.type = 'customer'; });
+  // backward compatibility: old transactions had no currency field
+  state.transactions.forEach(t => { if(!t.currency) t.currency = 'toman'; });
+
+  try{
+    const r = await storageGet('usd_rate');
+    if(r) exchangeRate = parseFloat(r) || exchangeRate;
+  }catch(e){}
+  document.getElementById('usd-rate-input').value = exchangeRate;
 
   const alreadySeeded = await storageGet('seeded_purchases_v1');
   if(!alreadySeeded){
@@ -538,6 +556,7 @@ async function saveProducts(){ await storageSet('products', JSON.stringify(state
 async function saveOrders(){ await storageSet('orders', JSON.stringify(state.orders)); }
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function toToman(t){ return t.currency === 'usd' ? t.amount * exchangeRate : t.amount; }
 function monthKey(d){ const dt = new Date(d); return dt.getFullYear()+'-'+(dt.getMonth()+1); }
 function isThisMonth(d){ return monthKey(d) === monthKey(new Date()); }
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -556,10 +575,10 @@ function renderAll(){
 
 function renderDashboard(){
   const txs = state.transactions;
-  const totalIncome = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const totalExpense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const monthIncome = txs.filter(t=>t.type==='income' && isThisMonth(t.date)).reduce((s,t)=>s+t.amount,0);
-  const monthExpense = txs.filter(t=>t.type==='expense' && isThisMonth(t.date)).reduce((s,t)=>s+t.amount,0);
+  const totalIncome = txs.filter(t=>t.type==='income').reduce((s,t)=>s+toToman(t),0);
+  const totalExpense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+toToman(t),0);
+  const monthIncome = txs.filter(t=>t.type==='income' && isThisMonth(t.date)).reduce((s,t)=>s+toToman(t),0);
+  const monthExpense = txs.filter(t=>t.type==='expense' && isThisMonth(t.date)).reduce((s,t)=>s+toToman(t),0);
 
   document.getElementById('dash-net-month').textContent = fmt(monthIncome - monthExpense);
   document.getElementById('dash-net-total').textContent = 'سود خالص از ابتدا: ' + fmt(totalIncome - totalExpense);
@@ -586,8 +605,8 @@ function renderTrend(){
   for(let i=5;i>=0;i--){ months.push(new Date(now.getFullYear(), now.getMonth()-i, 1)); }
   const data = months.map(d=>{
     const key = monthKey(d);
-    const inc = state.transactions.filter(t=>t.type==='income' && monthKey(t.date)===key).reduce((s,t)=>s+t.amount,0);
-    const exp = state.transactions.filter(t=>t.type==='expense' && monthKey(t.date)===key).reduce((s,t)=>s+t.amount,0);
+    const inc = state.transactions.filter(t=>t.type==='income' && monthKey(t.date)===key).reduce((s,t)=>s+toToman(t),0);
+    const exp = state.transactions.filter(t=>t.type==='expense' && monthKey(t.date)===key).reduce((s,t)=>s+toToman(t),0);
     return {d, inc, exp};
   });
   const max = Math.max(1, ...data.map(x=>Math.max(x.inc,x.exp)));
@@ -609,6 +628,10 @@ function txItemEl(t){
   el.className = 'item';
   const cust = state.customers.find(c=>c.id===t.customerId);
   const isConfirming = confirmingId === t.id;
+  const isUsd = t.currency === 'usd';
+  const amountLabel = isUsd
+    ? `$${fmtNum(t.amount)} <span style="font-size:10px; color:var(--ink-soft); font-weight:500;">(${fmtNum(toToman(t))} ت)</span>`
+    : fmtNum(t.amount);
   el.innerHTML = `
     <div class="item-icon ${t.type}">${t.type==='income' ? '↓' : '↑'}</div>
     <div class="item-body">
@@ -618,7 +641,7 @@ function txItemEl(t){
     ${isConfirming ? `
       <div class="confirm-row"><button class="yes" data-yes="${t.id}">حذف</button><button class="no" data-no="${t.id}">انصراف</button></div>
     ` : `
-      <div class="item-amount ${t.type}">${t.type==='expense'?'-':''}${fmtNum(t.amount)}</div>
+      <div class="item-amount ${t.type}" style="text-align:left;">${t.type==='expense'?'-':''}${amountLabel}</div>
       <button class="item-del" data-del="${t.id}" aria-label="حذف">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12"/></svg>
       </button>
@@ -746,7 +769,7 @@ function renderOrders(){
 function custItemEl(c){
   const el = document.createElement('div');
   el.className = 'item';
-  const spent = state.transactions.filter(t=>t.customerId===c.id && t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const spent = state.transactions.filter(t=>t.customerId===c.id && t.type==='income').reduce((s,t)=>s+toToman(t),0);
   const isConfirming = confirmingId === 'c-'+c.id;
   const isBoutique = c.type === 'boutique';
   el.innerHTML = `
@@ -846,12 +869,30 @@ function setTxType(type){
   document.getElementById('tx-type-income').classList.toggle('on', type==='income');
   document.getElementById('tx-type-expense').classList.toggle('on', type==='expense');
   populateCategorySelect();
+  document.getElementById('tx-currency-toggle').style.display = type==='income' ? 'flex' : 'none';
+  if(type !== 'income') setTxCurrency('toman');
 }
 document.getElementById('tx-type-income').onclick = ()=> setTxType('income');
 document.getElementById('tx-type-expense').onclick = ()=> setTxType('expense');
 
+function setTxCurrency(cur){
+  currentTxCurrency = cur;
+  document.getElementById('tx-cur-toman').classList.toggle('on', cur==='toman');
+  document.getElementById('tx-cur-usd').classList.toggle('on', cur==='usd');
+  document.getElementById('tx-amount-label').textContent = cur==='usd' ? 'مبلغ (دلار)' : 'مبلغ (تومان)';
+  document.getElementById('tx-amount').placeholder = cur==='usd' ? 'مثلا ۲۰۰' : 'مثلا ۵۵۰۰۰۰';
+}
+document.getElementById('tx-cur-toman').onclick = ()=> setTxCurrency('toman');
+document.getElementById('tx-cur-usd').onclick = ()=> setTxCurrency('usd');
+
+document.getElementById('usd-rate-input').onchange = async ()=>{
+  const v = parseFloat(document.getElementById('usd-rate-input').value);
+  if(v > 0){ exchangeRate = v; await storageSet('usd_rate', String(v)); renderAll(); }
+};
+
 function openTxModal(){
   setTxType('income');
+  setTxCurrency('toman');
   document.getElementById('tx-amount').value = '';
   document.getElementById('tx-desc').value = '';
   document.getElementById('tx-date').value = new Date().toISOString().slice(0,10);
@@ -865,6 +906,7 @@ document.getElementById('tx-save').onclick = async ()=>{
   if(!amount || amount<=0){ document.getElementById('tx-amount').focus(); return; }
   const t = {
     id: uid(), type: currentTxType, amount,
+    currency: currentTxType==='income' ? currentTxCurrency : 'toman',
     category: document.getElementById('tx-category').value,
     description: document.getElementById('tx-desc').value.trim(),
     customerId: document.getElementById('tx-customer').value || null,
