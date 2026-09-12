@@ -142,6 +142,19 @@
   }
   .subtab-btn.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
 
+  .chip{
+    flex:none; padding:7px 14px; border-radius:20px; border:1px solid var(--line);
+    background:var(--card); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .chip.active{ background:var(--rose); color:#fff; border-color:var(--rose); }
+
+  .item-photo{ width:44px; height:44px; border-radius:10px; object-fit:cover; flex:none; border:1px solid var(--line); }
+  .stock-tag{ font-size:11px; margin-top:2px; }
+  .stock-tag.low{ color:var(--expense); }
+  .stock-tag.ok{ color:var(--ink-soft); }
+  .collection-tag{ display:inline-block; font-size:10.5px; font-weight:700; color:var(--gold-deep); background:#F1E4CC; border-radius:20px; padding:2px 9px; margin-top:4px; }
+
   .stage-select{
     font-family:inherit; font-size:10.5px; font-weight:600; border-radius:20px; border:1px solid var(--line);
     padding:3px 6px; background:var(--card); color:var(--ink); flex:none; max-width:110px;
@@ -277,6 +290,7 @@
     <!-- PRODUCTS -->
     <section class="view" id="view-products">
       <div class="section-title">محصولات <span class="count" id="prod-count"></span></div>
+      <div id="prod-filter-chips" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:10px; margin-bottom:6px;"></div>
       <div id="prod-list"></div>
     </section>
 
@@ -409,11 +423,29 @@
       <input type="text" id="prod-name" placeholder="مثلا کیف مدل رزا - مشکی">
     </div>
     <div class="field">
+      <label>کالکشن</label>
+      <input type="text" id="prod-collection" list="collection-options" placeholder="مثلا کالکشن پاییزی">
+      <datalist id="collection-options"></datalist>
+    </div>
+    <div class="field">
+      <label>عکس محصول</label>
+      <input type="file" id="prod-photo" accept="image/*">
+      <div id="prod-photo-preview" style="margin-top:8px;"></div>
+    </div>
+    <div class="field">
+      <label>موجودی (تعداد)</label>
+      <input type="number" id="prod-stock" inputmode="numeric" placeholder="مثلا ۳" min="0">
+    </div>
+    <div class="field">
       <label>قیمت تمام‌شده (تومان)</label>
       <input type="number" id="prod-cost" inputmode="numeric" placeholder="مثلا ۴۵۰۰۰۰">
     </div>
     <div class="field">
-      <label>قیمت فروش (تومان)</label>
+      <label id="prod-price-label">قیمت فروش (تومان)</label>
+      <div class="type-toggle" style="margin-bottom:8px;">
+        <button type="button" class="sel-income" id="prod-cur-toman">تومان</button>
+        <button type="button" class="sel-income" id="prod-cur-usd">دلار</button>
+      </div>
       <input type="number" id="prod-price" inputmode="numeric" placeholder="مثلا ۹۵۰۰۰۰">
     </div>
     <div class="field">
@@ -444,7 +476,7 @@
       <input type="number" id="order-qty" inputmode="numeric" value="1" min="1">
     </div>
     <div class="field">
-      <label>قیمت واحد (تومان)</label>
+      <label id="order-price-label">قیمت واحد (تومان)</label>
       <input type="number" id="order-price" inputmode="numeric" placeholder="خودکار از محصول پر می‌شه">
     </div>
     <div class="field">
@@ -497,6 +529,10 @@ let activeView = 'dashboard';
 let activeCustSub = 'customer';
 let currentCustModalType = 'customer';
 let currentTxCurrency = 'toman';
+let currentProdCurrency = 'toman';
+let activeProductFilter = 'همه';
+let currentProductPhoto = null;
+let currentProdPhoto = null;
 let exchangeRate = 230000; // toman per 1 USD — user-editable
 
 /* storage: use Claude's artifact storage when available (inside claude.ai),
@@ -531,6 +567,8 @@ async function loadState(){
   state.customers.forEach(c => { if(!c.type) c.type = 'customer'; });
   // backward compatibility: old transactions had no currency field
   state.transactions.forEach(t => { if(!t.currency) t.currency = 'toman'; });
+  // backward compatibility: old products had no sale-price currency field
+  state.products.forEach(p => { if(!p.salePriceCurrency) p.salePriceCurrency = 'toman'; });
 
   try{
     const r = await storageGet('usd_rate');
@@ -670,14 +708,22 @@ function renderAccounting(){
 function prodItemEl(p){
   const el = document.createElement('div');
   el.className = 'item';
-  const margin = (p.salePrice||0) - (p.costPrice||0);
+  const isUsd = p.salePriceCurrency === 'usd';
+  const salePriceToman = isUsd ? (p.salePrice||0) * exchangeRate : (p.salePrice||0);
+  const margin = salePriceToman - (p.costPrice||0);
+  const saleLabel = isUsd ? `$${fmtNum(p.salePrice)} (${fmtNum(salePriceToman)} ت)` : fmtNum(p.salePrice);
   const isConfirming = confirmingId === 'p-'+p.id;
+  const stock = (p.stock === undefined || p.stock === null || p.stock === '') ? null : parseInt(p.stock);
+  const stockHtml = stock===null ? '' : `<div class="stock-tag ${stock<=1?'low':'ok'}">موجودی: ${fmtNum(stock)} عدد</div>`;
+  const photoHtml = p.photo ? `<img class="item-photo" src="${p.photo}">` : `<div class="item-icon product">👜</div>`;
   el.innerHTML = `
-    <div class="item-icon product">👜</div>
+    ${photoHtml}
     <div class="item-body">
       <div class="item-title">${escapeHtml(p.name)}</div>
-      <div class="item-sub">تمام‌شده: ${fmtNum(p.costPrice)} · فروش: ${fmtNum(p.salePrice)}</div>
+      <div class="item-sub">تمام‌شده: ${fmtNum(p.costPrice)} ت · فروش: ${saleLabel}</div>
       <div class="margin-tag">سود هر واحد: ${fmt(margin)}</div>
+      ${stockHtml}
+      ${p.collection ? `<div class="collection-tag">${escapeHtml(p.collection)}</div>` : ''}
     </div>
     ${isConfirming ? `
       <div class="confirm-row"><button class="yes" data-pyes="${p.id}">حذف</button><button class="no" data-pno="${p.id}">انصراف</button></div>
@@ -696,9 +742,34 @@ function prodItemEl(p){
   });
   return el;
 }
+function renderProductFilterChips(){
+  const wrap = document.getElementById('prod-filter-chips');
+  const collections = [...new Set(state.products.map(p=>p.collection).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fa'));
+  const options = ['همه', ...collections];
+  if(!options.includes(activeProductFilter)) activeProductFilter = 'همه';
+  wrap.innerHTML = '';
+  if(collections.length === 0){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  options.forEach(opt=>{
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (opt===activeProductFilter ? ' active' : '');
+    btn.textContent = opt;
+    btn.onclick = ()=>{ activeProductFilter = opt; renderProducts(); };
+    wrap.appendChild(btn);
+  });
+}
+function populateCollectionDatalist(){
+  const dl = document.getElementById('collection-options');
+  const collections = [...new Set(state.products.map(p=>p.collection).filter(Boolean))];
+  dl.innerHTML = collections.map(c=>`<option value="${escapeHtml(c)}">`).join('');
+}
 function renderProducts(){
+  renderProductFilterChips();
+  populateCollectionDatalist();
   const list = document.getElementById('prod-list');
-  const prods = [...state.products].sort((a,b)=> a.name.localeCompare(b.name,'fa'));
+  let prods = [...state.products];
+  if(activeProductFilter !== 'همه') prods = prods.filter(p=>p.collection === activeProductFilter);
+  prods.sort((a,b)=> a.name.localeCompare(b.name,'fa'));
   document.getElementById('prod-count').textContent = prods.length ? `(${fmtNum(prods.length)})` : '';
   list.innerHTML = '';
   if(!prods.length){ list.innerHTML = emptyState('هنوز محصولی ثبت نشده', 'با دکمه + اولین محصول رو اضافه کن'); return; }
@@ -722,7 +793,7 @@ function orderItemEl(o){
       <div class="confirm-row"><button class="yes" data-oyes="${o.id}">حذف</button><button class="no" data-ono="${o.id}">انصراف</button></div>
     ` : `
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-        <div class="item-amount">${fmtNum(o.total)}</div>
+        <div class="item-amount" style="text-align:left;">${o.currency==='usd' ? `$${fmtNum(o.total)}` : fmtNum(o.total)}</div>
         <button class="item-del" data-odel="${o.id}" aria-label="حذف">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12"/></svg>
         </button>
@@ -956,11 +1027,63 @@ document.getElementById('cust-save').onclick = async ()=>{
 };
 
 /* product modal */
+function setProdCurrency(cur){
+  currentProdCurrency = cur;
+  document.getElementById('prod-cur-toman').classList.toggle('on', cur==='toman');
+  document.getElementById('prod-cur-usd').classList.toggle('on', cur==='usd');
+  document.getElementById('prod-price-label').textContent = cur==='usd' ? 'قیمت فروش (دلار)' : 'قیمت فروش (تومان)';
+  document.getElementById('prod-price').placeholder = cur==='usd' ? 'مثلا ۴۰' : 'مثلا ۹۵۰۰۰۰';
+}
+document.getElementById('prod-cur-toman').onclick = ()=> setProdCurrency('toman');
+document.getElementById('prod-cur-usd').onclick = ()=> setProdCurrency('usd');
+
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w > h){ if(w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; } }
+        else { if(h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function renderProdPhotoPreview(){
+  const wrap = document.getElementById('prod-photo-preview');
+  wrap.innerHTML = currentProductPhoto
+    ? `<img src="${currentProductPhoto}" style="width:64px; height:64px; object-fit:cover; border-radius:10px; border:1px solid var(--line);">`
+    : '';
+}
+document.getElementById('prod-photo').onchange = async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    currentProductPhoto = await compressImage(file, 480, 0.72);
+    renderProdPhotoPreview();
+  }catch(err){ console.error('photo compress failed', err); }
+};
+
 function openProductModal(){
   document.getElementById('prod-name').value = '';
+  document.getElementById('prod-collection').value = '';
+  document.getElementById('prod-stock').value = '';
   document.getElementById('prod-cost').value = '';
   document.getElementById('prod-price').value = '';
   document.getElementById('prod-notes').value = '';
+  document.getElementById('prod-photo').value = '';
+  currentProductPhoto = null;
+  renderProdPhotoPreview();
+  setProdCurrency('toman');
   document.getElementById('overlay-prod').classList.add('open');
 }
 document.getElementById('prod-cancel').onclick = ()=> document.getElementById('overlay-prod').classList.remove('open');
@@ -968,10 +1091,15 @@ document.getElementById('overlay-prod').onclick = (e)=>{ if(e.target.id==='overl
 document.getElementById('prod-save').onclick = async ()=>{
   const name = document.getElementById('prod-name').value.trim();
   if(!name){ document.getElementById('prod-name').focus(); return; }
+  const stockVal = document.getElementById('prod-stock').value;
   const p = {
     id: uid(), name,
+    collection: document.getElementById('prod-collection').value.trim(),
+    stock: stockVal === '' ? null : parseInt(stockVal),
+    photo: currentProductPhoto,
     costPrice: parseFloat(document.getElementById('prod-cost').value) || 0,
     salePrice: parseFloat(document.getElementById('prod-price').value) || 0,
+    salePriceCurrency: currentProdCurrency,
     notes: document.getElementById('prod-notes').value.trim()
   };
   state.products.push(p);
@@ -993,7 +1121,10 @@ function populateOrderSelects(){
 }
 document.getElementById('order-product').onchange = ()=>{
   const p = state.products.find(x=>x.id === document.getElementById('order-product').value);
-  if(p) document.getElementById('order-price').value = p.salePrice;
+  if(p){
+    document.getElementById('order-price').value = p.salePrice;
+    document.getElementById('order-price-label').textContent = p.salePriceCurrency==='usd' ? 'قیمت واحد (دلار)' : 'قیمت واحد (تومان)';
+  }
 };
 function openOrderModal(){
   populateOrderSelects();
@@ -1011,12 +1142,13 @@ document.getElementById('order-save').onclick = async ()=>{
   const qty = parseInt(document.getElementById('order-qty').value) || 1;
   const price = parseFloat(document.getElementById('order-price').value) || (prod ? prod.salePrice : 0);
   if(!prod){ document.getElementById('order-product').focus(); return; }
+  const currency = prod.salePriceCurrency || 'toman';
   const o = {
     id: uid(),
     customerId: document.getElementById('order-customer').value || null,
     productId: prodId,
     productName: prod.name,
-    qty, unitPrice: price, total: qty*price,
+    qty, unitPrice: price, total: qty*price, currency,
     status: document.getElementById('order-status').value,
     date: document.getElementById('order-date').value || new Date().toISOString().slice(0,10),
     notes: document.getElementById('order-notes').value.trim()
