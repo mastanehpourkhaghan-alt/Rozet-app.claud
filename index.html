@@ -417,7 +417,7 @@
 <!-- PRODUCT MODAL -->
 <div class="overlay" id="overlay-prod">
   <div class="sheet">
-    <h2>افزودن محصول</h2>
+    <h2 id="prod-modal-title">افزودن محصول</h2>
     <div class="field">
       <label>نام محصول</label>
       <input type="text" id="prod-name" placeholder="مثلا کیف مدل رزا - مشکی">
@@ -433,8 +433,12 @@
       <div id="prod-photo-preview" style="margin-top:8px;"></div>
     </div>
     <div class="field">
-      <label>موجودی (تعداد)</label>
+      <label>موجودی فعلی (تعداد)</label>
       <input type="number" id="prod-stock" inputmode="numeric" placeholder="مثلا ۳" min="0">
+    </div>
+    <div class="field">
+      <label>تعداد دوخته‌شده (کل تولید)</label>
+      <input type="number" id="prod-sewn" inputmode="numeric" placeholder="مثلا ۱۰" min="0">
     </div>
     <div class="field">
       <label>قیمت تمام‌شده (تومان)</label>
@@ -532,6 +536,7 @@ let currentTxCurrency = 'toman';
 let currentProdCurrency = 'toman';
 let activeProductFilter = 'همه';
 let currentProductPhoto = null;
+let editingProductId = null;
 let currentProdPhoto = null;
 let exchangeRate = 230000; // toman per 1 USD — user-editable
 
@@ -708,6 +713,7 @@ function renderAccounting(){
 function prodItemEl(p){
   const el = document.createElement('div');
   el.className = 'item';
+  el.style.cursor = 'pointer';
   const isUsd = p.salePriceCurrency === 'usd';
   const salePriceToman = isUsd ? (p.salePrice||0) * exchangeRate : (p.salePrice||0);
   const margin = salePriceToman - (p.costPrice||0);
@@ -715,6 +721,7 @@ function prodItemEl(p){
   const isConfirming = confirmingId === 'p-'+p.id;
   const stock = (p.stock === undefined || p.stock === null || p.stock === '') ? null : parseInt(p.stock);
   const stockHtml = stock===null ? '' : `<div class="stock-tag ${stock<=1?'low':'ok'}">موجودی: ${fmtNum(stock)} عدد</div>`;
+  const sewnHtml = (p.sewnCount===undefined || p.sewnCount===null || p.sewnCount==='') ? '' : `<div class="stock-tag ok">دوخته‌شده: ${fmtNum(p.sewnCount)} عدد</div>`;
   const photoHtml = p.photo ? `<img class="item-photo" src="${p.photo}">` : `<div class="item-icon product">👜</div>`;
   el.innerHTML = `
     ${photoHtml}
@@ -723,6 +730,7 @@ function prodItemEl(p){
       <div class="item-sub">تمام‌شده: ${fmtNum(p.costPrice)} ت · فروش: ${saleLabel}</div>
       <div class="margin-tag">سود هر واحد: ${fmt(margin)}</div>
       ${stockHtml}
+      ${sewnHtml}
       ${p.collection ? `<div class="collection-tag">${escapeHtml(p.collection)}</div>` : ''}
     </div>
     ${isConfirming ? `
@@ -732,9 +740,16 @@ function prodItemEl(p){
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12"/></svg>
       </button>
     `}`;
-  el.querySelectorAll('[data-pdel]').forEach(b=> b.onclick = ()=>{ confirmingId = 'p-'+p.id; renderProducts(); });
-  el.querySelectorAll('[data-pno]').forEach(b=> b.onclick = ()=>{ confirmingId = null; renderProducts(); });
-  el.querySelectorAll('[data-pyes]').forEach(b=> b.onclick = async ()=>{
+  if(!isConfirming){
+    el.addEventListener('click', (e)=>{
+      if(e.target.closest('[data-pdel]')) return;
+      openProductModal(p);
+    });
+  }
+  el.querySelectorAll('[data-pdel]').forEach(b=> b.onclick = (e)=>{ e.stopPropagation(); confirmingId = 'p-'+p.id; renderProducts(); });
+  el.querySelectorAll('[data-pno]').forEach(b=> b.onclick = (e)=>{ e.stopPropagation(); confirmingId = null; renderProducts(); });
+  el.querySelectorAll('[data-pyes]').forEach(b=> b.onclick = async (e)=>{
+    e.stopPropagation();
     state.products = state.products.filter(x=>x.id!==p.id);
     confirmingId = null;
     await saveProducts();
@@ -1073,17 +1088,21 @@ document.getElementById('prod-photo').onchange = async (e)=>{
   }catch(err){ console.error('photo compress failed', err); }
 };
 
-function openProductModal(){
-  document.getElementById('prod-name').value = '';
-  document.getElementById('prod-collection').value = '';
-  document.getElementById('prod-stock').value = '';
-  document.getElementById('prod-cost').value = '';
-  document.getElementById('prod-price').value = '';
-  document.getElementById('prod-notes').value = '';
+function openProductModal(existing){
+  editingProductId = existing ? existing.id : null;
+  document.getElementById('prod-modal-title').textContent = existing ? 'ویرایش محصول' : 'افزودن محصول';
+  document.getElementById('prod-name').value = existing ? existing.name : '';
+  document.getElementById('prod-collection').value = existing ? (existing.collection||'') : '';
+  document.getElementById('prod-stock').value = existing && existing.stock!=null ? existing.stock : '';
+  document.getElementById('prod-sewn').value = existing && existing.sewnCount!=null ? existing.sewnCount : '';
+  document.getElementById('prod-cost').value = existing ? existing.costPrice : '';
+  document.getElementById('prod-price').value = existing ? existing.salePrice : '';
+  document.getElementById('prod-notes').value = existing ? (existing.notes||'') : '';
   document.getElementById('prod-photo').value = '';
-  currentProductPhoto = null;
+  currentProductPhoto = existing ? (existing.photo || null) : null;
   renderProdPhotoPreview();
-  setProdCurrency('toman');
+  setProdCurrency(existing && existing.salePriceCurrency==='usd' ? 'usd' : 'toman');
+  populateCollectionDatalist();
   document.getElementById('overlay-prod').classList.add('open');
 }
 document.getElementById('prod-cancel').onclick = ()=> document.getElementById('overlay-prod').classList.remove('open');
@@ -1092,17 +1111,24 @@ document.getElementById('prod-save').onclick = async ()=>{
   const name = document.getElementById('prod-name').value.trim();
   if(!name){ document.getElementById('prod-name').focus(); return; }
   const stockVal = document.getElementById('prod-stock').value;
-  const p = {
-    id: uid(), name,
+  const sewnVal = document.getElementById('prod-sewn').value;
+  const fields = {
+    name,
     collection: document.getElementById('prod-collection').value.trim(),
     stock: stockVal === '' ? null : parseInt(stockVal),
+    sewnCount: sewnVal === '' ? null : parseInt(sewnVal),
     photo: currentProductPhoto,
     costPrice: parseFloat(document.getElementById('prod-cost').value) || 0,
     salePrice: parseFloat(document.getElementById('prod-price').value) || 0,
     salePriceCurrency: currentProdCurrency,
     notes: document.getElementById('prod-notes').value.trim()
   };
-  state.products.push(p);
+  if(editingProductId){
+    const idx = state.products.findIndex(p=>p.id===editingProductId);
+    if(idx > -1) state.products[idx] = { ...state.products[idx], ...fields };
+  } else {
+    state.products.push({ id: uid(), ...fields });
+  }
   await saveProducts();
   document.getElementById('overlay-prod').classList.remove('open');
   renderAll();
