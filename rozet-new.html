@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ROZET</title>
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ROZET">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2A1420;
+    --ink-soft:#7A5560;
+    --paper:#F6ECE1;
+    --card:#FFFCF8;
+    --gold:#B4863A;
+    --gold-deep:#8C6626;
+    --rose:#B96570;
+    --rose-soft:#EFDADD;
+    --line:#E1CDB8;
+    --income:#5F7F5C;
+    --income-bg:#E6EDE2;
+    --expense:#AD5049;
+    --expense-bg:#F3E1DD;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Vazirmatn', sans-serif;
+    background:#E9DCCB;
+    color:var(--ink);
+    display:flex;
+    justify-content:center;
+    min-height:100vh;
+  }
+  .frame{
+    width:100%;
+    max-width:430px;
+    min-height:100vh;
+    background:var(--paper);
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    background-image:
+      radial-gradient(circle at 18% 8%, rgba(180,134,58,0.10) 0, transparent 40%),
+      radial-gradient(circle at 85% 4%, rgba(185,101,112,0.10) 0, transparent 35%);
+  }
+
+  header{
+    padding:22px 20px 16px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    border-bottom:1px dashed var(--line);
+  }
+  .mark{ width:42px; height:42px; flex:none; }
+  .brand-text h1{ font-size:19px; font-weight:800; letter-spacing:.2px; }
+  .brand-text p{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+
+  main{ flex:1; padding:18px 16px 100px; overflow-y:auto; }
+  .view{ display:none; }
+  .view.active{ display:block; animation:fadeup .35s ease; }
+  @keyframes fadeup{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .hero-card{
+    background:var(--ink); color:var(--paper);
+    border-radius:18px; padding:22px 20px; position:relative; overflow:hidden;
+  }
+  .hero-card::after{
+    content:""; position:absolute; inset:0;
+    background-image:radial-gradient(rgba(246,236,225,.14) 1.4px, transparent 1.4px);
+    background-size:14px 14px; opacity:.5;
+  }
+  .hero-card .label{ font-size:12.5px; color:var(--rose-soft); font-weight:500; position:relative; }
+  .hero-card .amount{ font-size:30px; font-weight:800; margin-top:6px; position:relative; font-variant-numeric: tabular-nums; }
+  .hero-card .sub{ font-size:12px; color:#C9B9AE; margin-top:8px; position:relative; }
+  .privacy-btn{
+    position:absolute; left:16px; top:16px; z-index:2;
+    width:32px; height:32px; border-radius:50%; border:none;
+    background:rgba(246,236,225,0.14); color:var(--paper);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .privacy-btn svg{ width:17px; height:17px; }
+  .amount-blur{ filter: blur(7px); user-select:none; transition: filter .15s ease; }
+  .stat-value.amount-blur{ filter: blur(5px); }
+
+  .stat-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .stat{ background:var(--card); border:1px dashed var(--line); border-radius:14px; padding:14px; }
+  .stat .stat-label{ font-size:12px; color:var(--ink-soft); }
+  .stat .stat-value{ font-size:18px; font-weight:700; margin-top:4px; font-variant-numeric: tabular-nums;}
+  .stat.income .stat-value{ color:var(--income); }
+  .stat.expense .stat-value{ color:var(--expense); }
+
+  .section-title{ font-size:14.5px; font-weight:700; margin:22px 0 10px; display:flex; align-items:center; justify-content:space-between; }
+  .section-title span.count{ font-weight:500; font-size:12px; color:var(--ink-soft); }
+
+  .trend{ background:var(--card); border:1px dashed var(--line); border-radius:14px; padding:16px 14px 10px; }
+  .trend-bars{ display:flex; align-items:flex-end; justify-content:space-between; height:90px; gap:8px; }
+  .trend-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+  .trend-bar-pair{ display:flex; align-items:flex-end; gap:3px; height:100%; }
+  .trend-bar{ width:7px; border-radius:3px 3px 0 0; min-height:3px; }
+  .trend-bar.in{ background:var(--income); }
+  .trend-bar.out{ background:var(--expense); }
+  .trend-col .m-label{ font-size:10.5px; color:var(--ink-soft); margin-top:6px; }
+  .trend-legend{ display:flex; gap:14px; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); font-size:11.5px; color:var(--ink-soft); }
+  .trend-legend span{ display:flex; align-items:center; gap:5px; }
+  .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  .item{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:10px;
+  }
+  .item-icon{ width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex:none; font-size:15px;}
+  .item-icon.income{ background:var(--income-bg); color:var(--income); }
+  .item-icon.expense{ background:var(--expense-bg); color:var(--expense); }
+  .item-icon.customer{ background:var(--rose-soft); color:var(--rose); font-weight:700; font-size:15px; }
+  .item-icon.product{ background:var(--gold)/10; background:#F1E4CC; color:var(--gold-deep); }
+  .item-icon.order{ background:#F1E4CC; color:var(--gold-deep); }
+  .item-body{ flex:1; min-width:0; }
+  .item-title{ font-size:13.5px; font-weight:600; }
+  .item-sub{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .item-amount{ font-size:13.5px; font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .item-amount.income{ color:var(--income); }
+  .item-amount.expense{ color:var(--expense); }
+  .item-del{ width:26px; height:26px; flex:none; border:none; background:none; color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:50%; }
+  .confirm-row{ display:flex; gap:8px; align-items:center; margin-inline-start:auto; }
+  .confirm-row button{ border:none; border-radius:8px; padding:5px 10px; font-size:11.5px; font-family:inherit; cursor:pointer; }
+  .confirm-row .yes{ background:var(--expense); color:#fff; }
+  .confirm-row .no{ background:var(--line); color:var(--ink); }
+
+  .empty{ text-align:center; padding:34px 10px; color:var(--ink-soft); font-size:13px; }
+  .empty .glyph{ font-size:26px; margin-bottom:8px; }
+
+  .customer-total{ font-size:11.5px; color:var(--gold-deep); margin-top:2px; }
+
+  .badge{
+    font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap; flex:none;
+  }
+  .badge-neutral{ background:var(--rose-soft); color:var(--rose); }
+  .badge-active{ background:#F1E4CC; color:var(--gold-deep); }
+  .badge-done{ background:var(--income-bg); color:var(--income); }
+  .badge-cancel{ background:var(--expense-bg); color:var(--expense); }
+
+  .subtabs{ display:flex; gap:8px; margin-bottom:12px; }
+  .subtab-btn{
+    flex:1; padding:9px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--ink-soft);
+  }
+  .subtab-btn.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+
+  .chip{
+    flex:none; padding:7px 14px; border-radius:20px; border:1px solid var(--line);
+    background:var(--card); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .chip.active{ background:var(--rose); color:#fff; border-color:var(--rose); }
+
+  .item-photo{ width:44px; height:44px; border-radius:10px; object-fit:cover; flex:none; border:1px solid var(--line); }
+  .stock-tag{ font-size:11px; margin-top:2px; }
+  .stock-tag.low{ color:var(--expense); }
+  .stock-tag.ok{ color:var(--ink-soft); }
+  .collection-tag{ display:inline-block; font-size:10.5px; font-weight:700; color:var(--gold-deep); background:#F1E4CC; border-radius:20px; padding:2px 9px; margin-top:4px; }
+
+  .stage-select{
+    font-family:inherit; font-size:10.5px; font-weight:600; border-radius:20px; border:1px solid var(--line);
+    padding:3px 6px; background:var(--card); color:var(--ink); flex:none; max-width:110px;
+  }
+
+  .margin-tag{ font-size:11px; color:var(--income); margin-top:2px; }
+
+  nav{
+    position:sticky; bottom:0; background:var(--card); border-top:1px dashed var(--line);
+    display:flex; padding:7px 4px calc(7px + env(safe-area-inset-bottom));
+  }
+  .nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+    background:none; border:none; font-family:inherit; padding:5px 0; cursor:pointer; color:var(--ink-soft);
+  }
+  .nav-btn.active{ color:var(--rose); }
+  .nav-btn svg{ width:19px; height:19px; }
+  .nav-btn span{ font-size:9.5px; font-weight:600; }
+
+  .fab{
+    position:absolute; left:20px; bottom:74px; width:52px; height:52px; border-radius:50%;
+    background:var(--rose); color:#fff; border:none; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 16px rgba(185,101,112,.4); cursor:pointer; z-index:5;
+  }
+  .fab svg{ width:22px; height:22px; }
+
+  .overlay{ position:fixed; inset:0; background:rgba(42,20,32,.45); display:none; align-items:flex-end; justify-content:center; z-index:20; }
+  .overlay.open{ display:flex; }
+  .sheet{
+    width:100%; max-width:430px; background:var(--paper); border-radius:20px 20px 0 0;
+    padding:20px 20px calc(20px + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto;
+    animation:slideup .25s ease;
+  }
+  @keyframes slideup{ from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  .sheet h2{ font-size:16px; font-weight:700; margin-bottom:16px; }
+  .field{ margin-bottom:12px; }
+  .field label{ font-size:12px; color:var(--ink-soft); display:block; margin-bottom:5px; }
+  .field input, .field select, .field textarea{
+    width:100%; font-family:inherit; font-size:14px; padding:10px 12px; border-radius:10px;
+    border:1px solid var(--line); background:var(--card); color:var(--ink);
+  }
+  .field textarea{ resize:vertical; min-height:60px; }
+  .type-toggle{ display:flex; gap:8px; margin-bottom:14px; }
+  .type-toggle button{
+    flex:1; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--card);
+    font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; color:var(--ink-soft);
+  }
+  .type-toggle button.sel-income.on{ background:var(--income-bg); color:var(--income); border-color:var(--income); }
+  .type-toggle button.sel-expense.on{ background:var(--expense-bg); color:var(--expense); border-color:var(--expense); }
+  .sheet-actions{ display:flex; gap:10px; margin-top:18px; }
+  .sheet-actions button{ flex:1; padding:12px; border-radius:12px; border:none; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+  .btn-cancel{ background:var(--line); color:var(--ink); }
+  .btn-save{ background:var(--ink); color:var(--paper); }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <header>
+    <svg class="mark" viewBox="0 0 42 42" fill="none">
+      <circle cx="21" cy="21" r="19.5" stroke="#B4863A" stroke-width="1.4" stroke-dasharray="3 3"/>
+      <circle cx="21" cy="14" r="2.6" fill="#B4863A"/>
+      <circle cx="14" cy="25" r="2.6" fill="#B96570"/>
+      <circle cx="28" cy="25" r="2.6" fill="#B96570"/>
+      <path d="M21 16.5 L15.5 23.5 M21 16.5 L26.5 23.5" stroke="#8C6626" stroke-width="1" stroke-dasharray="1.5 1.5"/>
+    </svg>
+    <div class="brand-text">
+      <h1>ROZET</h1>
+      <p>حساب و کتاب، محصولات، سفارش‌ها و مشتری‌ها</p>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="hero-card">
+        <button id="privacy-toggle" class="privacy-btn" aria-label="پنهان/نمایش سود">
+          <svg id="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>
+          <svg id="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="display:none;"><path d="M3 3l18 18M10.6 10.6a2.6 2.6 0 0 0 3.6 3.6M6.5 6.7C4 8.3 2 12 2 12s3.5 6.5 10 6.5c1.8 0 3.3-.4 4.6-1M17.7 17.8C20.4 16 22 12 22 12s-1-1.9-2.8-3.6"/></svg>
+        </button>
+        <div class="label">سود خالص این ماه</div>
+        <div class="amount" id="dash-net-month">۰ تومان</div>
+        <div class="sub" id="dash-net-total">سود خالص از ابتدا: ۰ تومان</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat income">
+          <div class="stat-label">درآمد این ماه</div>
+          <div class="stat-value" id="dash-income-month">۰</div>
+        </div>
+        <div class="stat expense">
+          <div class="stat-label">هزینه این ماه</div>
+          <div class="stat-value" id="dash-expense-month">۰</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">تعداد مشتری</div>
+          <div class="stat-value" id="dash-customer-count">۰</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">سفارش در جریان</div>
+          <div class="stat-value" id="dash-order-pending">۰</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">بوتیک در پیگیری</div>
+          <div class="stat-value" id="dash-boutique-pending">۰</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">تعداد محصول</div>
+          <div class="stat-value" id="dash-product-count">۰</div>
+        </div>
+      </div>
+
+      <div class="section-title">روند ۶ ماه اخیر</div>
+      <div class="trend">
+        <div class="trend-bars" id="trend-bars"></div>
+        <div class="trend-legend">
+          <span><i class="dot" style="background:var(--income)"></i>درآمد</span>
+          <span><i class="dot" style="background:var(--expense)"></i>هزینه</span>
+        </div>
+      </div>
+
+      <div class="section-title">آخرین تراکنش‌ها <span class="count" id="recent-count"></span></div>
+      <div id="recent-list"></div>
+    </section>
+
+    <!-- ACCOUNTING -->
+    <section class="view" id="view-accounting">
+      <div class="trend" style="margin-bottom:16px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <label style="font-size:12px; color:var(--ink-soft); flex:none;">نرخ دلار (تومان)</label>
+        <input type="number" id="usd-rate-input" inputmode="numeric" style="width:120px; font-family:inherit; font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); text-align:left;">
+      </div>
+      <div class="section-title">حسابداری <span class="count" id="acc-count"></span></div>
+      <div id="acc-list"></div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="view" id="view-products">
+      <div class="section-title">محصولات <span class="count" id="prod-count"></span></div>
+      <div id="prod-filter-chips" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:10px; margin-bottom:6px;"></div>
+      <div id="prod-list"></div>
+    </section>
+
+    <!-- ORDERS -->
+    <section class="view" id="view-orders">
+      <div class="section-title">سفارش‌ها <span class="count" id="order-count"></span></div>
+      <div id="order-list"></div>
+    </section>
+
+    <!-- CUSTOMERS / BOUTIQUES -->
+    <section class="view" id="view-customers">
+      <div class="section-title">مشتری‌ها و بوتیک‌ها</div>
+      <div class="subtabs">
+        <button class="subtab-btn active" id="subtab-customer" data-sub="customer">مشتری‌ها</button>
+        <button class="subtab-btn" id="subtab-boutique" data-sub="boutique">بوتیک‌ها</button>
+      </div>
+      <div id="cust-list"></div>
+    </section>
+
+  </main>
+
+  <button class="fab" id="fab-btn" aria-label="افزودن">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+
+  <nav>
+    <button class="nav-btn active" data-view="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h5v-5h2v5h5v-9"/></svg>
+      <span>داشبورد</span>
+    </button>
+    <button class="nav-btn" data-view="accounting">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3.5" width="14" height="17" rx="1.5"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/></svg>
+      <span>حساب</span>
+    </button>
+    <button class="nav-btn" data-view="products">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 8a5 5 0 0 1 10 0" /><path d="M5.5 8h13l1 12.5h-15z"/></svg>
+      <span>محصولات</span>
+    </button>
+    <button class="nav-btn" data-view="orders">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5.5" y="4" width="13" height="16" rx="1.5"/><path d="M9 3.5h6v2.5H9zM8.5 12l2 2 4-4"/></svg>
+      <span>سفارش‌ها</span>
+    </button>
+    <button class="nav-btn" data-view="customers">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.8-3.4 3-5 5.5-5s4.7 1.6 5.5 5"/><circle cx="17" cy="9" r="2.3"/><path d="M15.8 13.3c2 .2 3.5 1.7 4.2 4.5"/></svg>
+      <span>مشتری‌ها</span>
+    </button>
+  </nav>
+</div>
+
+<!-- TRANSACTION MODAL -->
+<div class="overlay" id="overlay-tx">
+  <div class="sheet">
+    <h2>ثبت تراکنش</h2>
+    <div class="type-toggle">
+      <button type="button" class="sel-income" id="tx-type-income">درآمد</button>
+      <button type="button" class="sel-expense" id="tx-type-expense">هزینه</button>
+    </div>
+    <div class="type-toggle" id="tx-currency-toggle" style="display:none;">
+      <button type="button" class="sel-income" id="tx-cur-toman">تومان</button>
+      <button type="button" class="sel-income" id="tx-cur-usd">دلار</button>
+    </div>
+    <div class="field">
+      <label id="tx-amount-label">مبلغ (تومان)</label>
+      <input type="number" id="tx-amount" inputmode="numeric" placeholder="مثلا ۵۵۰۰۰۰">
+    </div>
+    <div class="field">
+      <label>دسته‌بندی</label>
+      <select id="tx-category"></select>
+    </div>
+    <div class="field">
+      <label>توضیح</label>
+      <input type="text" id="tx-desc" placeholder="مثلا کیف مدل رزا - سفارش اینستاگرام">
+    </div>
+    <div class="field">
+      <label>مربوط به مشتری (اختیاری)</label>
+      <select id="tx-customer"><option value="">— بدون مشتری —</option></select>
+    </div>
+    <div class="field">
+      <label>تاریخ</label>
+      <input type="date" id="tx-date">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="tx-cancel">انصراف</button>
+      <button class="btn-save" id="tx-save">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMER / BOUTIQUE MODAL -->
+<div class="overlay" id="overlay-cust">
+  <div class="sheet">
+    <h2 id="cust-modal-title">افزودن مشتری</h2>
+    <div class="field">
+      <label id="cust-name-label">نام</label>
+      <input type="text" id="cust-name" placeholder="مثلا سارا محمدی">
+    </div>
+    <div class="field">
+      <label>ایمیل</label>
+      <input type="email" id="cust-email" placeholder="مثلا info@boutique.com">
+    </div>
+    <div class="field">
+      <label>شماره تماس</label>
+      <input type="text" id="cust-phone" placeholder="مثلا 09xxxxxxxxx">
+    </div>
+    <div class="field">
+      <label>شهر / کشور</label>
+      <input type="text" id="cust-city" placeholder="مثلا دبی، امارات">
+    </div>
+    <div class="field" id="cust-stage-field" style="display:none;">
+      <label>مرحله پیگیری</label>
+      <select id="cust-stage"></select>
+    </div>
+    <div class="field">
+      <label>یادداشت</label>
+      <textarea id="cust-notes" placeholder="سلیقه، سفارش‌های قبلی، ..."></textarea>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="cust-cancel">انصراف</button>
+      <button class="btn-save" id="cust-save">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="overlay" id="overlay-prod">
+  <div class="sheet">
+    <h2 id="prod-modal-title">افزودن محصول</h2>
+    <div class="field">
+      <label>نام محصول</label>
+      <input type="text" id="prod-name" placeholder="مثلا کیف مدل رزا - مشکی">
+    </div>
+    <div class="field">
+      <label>کالکشن</label>
+      <input type="text" id="prod-collection" list="collection-options" placeholder="مثلا کالکشن پاییزی">
+      <datalist id="collection-options"></datalist>
+    </div>
+    <div class="field">
+      <label>عکس محصول</label>
+      <input type="file" id="prod-photo" accept="image/*">
+      <div id="prod-photo-preview" style="margin-top:8px;"></div>
+    </div>
+    <div class="field">
+      <label>موجودی فعلی (تعداد)</label>
+      <input type="number" id="prod-stock" inputmode="numeric" placeholder="مثلا ۳" min="0">
+    </div>
+    <div class="field">
+      <label>تعداد دوخته‌شده (کل تولید)</label>
+      <input type="number" id="prod-sewn" inputmode="numeric" placeholder="مثلا ۱۰" min="0">
+    </div>
+    <div class="field">
+      <label>قیمت تمام‌شده (تومان)</label>
+      <input type="number" id="prod-cost" inputmode="numeric" placeholder="مثلا ۴۵۰۰۰۰">
+    </div>
+    <div class="field">
+      <label id="prod-price-label">قیمت فروش (تومان)</label>
+      <div class="type-toggle" style="margin-bottom:8px;">
+        <button type="button" class="sel-income" id="prod-cur-toman">تومان</button>
+        <button type="button" class="sel-income" id="prod-cur-usd">دلار</button>
+      </div>
+      <input type="number" id="prod-price" inputmode="numeric" placeholder="مثلا ۹۵۰۰۰۰">
+    </div>
+    <div class="field">
+      <label>توضیح</label>
+      <textarea id="prod-notes" placeholder="جنس، سایز، رنگ‌بندی..."></textarea>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="prod-cancel">انصراف</button>
+      <button class="btn-save" id="prod-save">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER MODAL -->
+<div class="overlay" id="overlay-order">
+  <div class="sheet">
+    <h2>ثبت سفارش</h2>
+    <div class="field">
+      <label>مشتری / بوتیک</label>
+      <select id="order-customer"><option value="">— انتخاب کن —</option></select>
+    </div>
+    <div class="field">
+      <label>محصول</label>
+      <select id="order-product"><option value="">— انتخاب کن —</option></select>
+    </div>
+    <div class="field">
+      <label>تعداد</label>
+      <input type="number" id="order-qty" inputmode="numeric" value="1" min="1">
+    </div>
+    <div class="field">
+      <label id="order-price-label">قیمت واحد (تومان)</label>
+      <input type="number" id="order-price" inputmode="numeric" placeholder="خودکار از محصول پر می‌شه">
+    </div>
+    <div class="field">
+      <label>وضعیت</label>
+      <select id="order-status"></select>
+    </div>
+    <div class="field">
+      <label>تاریخ</label>
+      <input type="date" id="order-date">
+    </div>
+    <div class="field">
+      <label>یادداشت</label>
+      <input type="text" id="order-notes" placeholder="اختیاری">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="order-cancel">انصراف</button>
+      <button class="btn-save" id="order-save">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const nf = new Intl.NumberFormat('fa-IR');
+const fmt = n => nf.format(Math.round(n)) + ' تومان';
+const fmtNum = n => nf.format(Math.round(n));
+
+const INCOME_CATS = ['فروش (بازار داخلی)', 'فروش (خلیج فارس / صادرات)', 'سایر درآمد'];
+const EXPENSE_CATS = ['پارچه', 'پارچه عکاسی', 'دهانه فلزی', 'پولک و منجوق', 'کریستال و مروارید', 'زانفیکس و لایی چسب', 'ابزار و ملزومات', 'بسته‌بندی و ارسال', 'تبلیغات و مارکتینگ', 'سایر هزینه'];
+
+const BOUTIQUE_STAGES = ['پیدا شده', 'ایمیل ارسال شده', 'پاسخ گرفته شده', 'نمونه ارسال شده', 'در حال مذاکره', 'همکاری فعال', 'رد شده'];
+const ORDER_STATUSES = ['ثبت شده', 'در حال آماده‌سازی', 'ارسال شده', 'تحویل داده شده', 'لغو شده'];
+
+function badgeClassForStage(stage){
+  if(stage === 'همکاری فعال') return 'badge-done';
+  if(stage === 'رد شده') return 'badge-cancel';
+  if(stage === 'پیدا شده') return 'badge-neutral';
+  return 'badge-active';
+}
+function badgeClassForOrder(status){
+  if(status === 'تحویل داده شده') return 'badge-done';
+  if(status === 'لغو شده') return 'badge-cancel';
+  if(status === 'ثبت شده') return 'badge-neutral';
+  return 'badge-active';
+}
+
+let state = { transactions: [], customers: [], products: [], orders: [] };
+let confirmingId = null;
+let currentTxType = 'income';
+let activeView = 'dashboard';
+let activeCustSub = 'customer';
+let currentCustModalType = 'customer';
+let editingCustomerId = null;
+let amountsHidden = false;
+
+function applyPrivacyDisplay(){
+  const targets = ['dash-net-month', 'dash-net-total', 'dash-income-month', 'dash-expense-month'];
+  targets.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle('amount-blur', amountsHidden);
+  });
+  document.getElementById('eye-open').style.display = amountsHidden ? 'none' : 'block';
+  document.getElementById('eye-closed').style.display = amountsHidden ? 'block' : 'none';
+}
+document.getElementById('privacy-toggle').onclick = ()=>{
+  amountsHidden = !amountsHidden;
+  applyPrivacyDisplay();
+};
+let currentTxCurrency = 'toman';
+let currentProdCurrency = 'toman';
+let activeProductFilter = 'همه';
+let currentProductPhoto = null;
+let editingProductId = null;
+let currentProdPhoto = null;
+let exchangeRate = 230000; // toman per 1 USD — user-editable
+
+/* storage: use Claude's artifact storage when available (inside claude.ai),
+   otherwise fall back to localStorage so the app also works as a standalone
+   saved file opened directly in Safari / Chrome. */
+async function storageGet(key){
+  if(window.storage){
+    try{
+      const r = await window.storage.get(key, false);
+      return r ? r.value : null;
+    }catch(e){ /* fall through */ }
+  }
+  try{ return localStorage.getItem(key); }catch(e){ return null; }
+}
+async function storageSet(key, value){
+  if(window.storage){
+    try{ await window.storage.set(key, value, false); return; }
+    catch(e){ /* fall through */ }
+  }
+  try{ localStorage.setItem(key, value); }catch(e){ console.error('save failed', e); }
+}
+
+const SEED_TRANSACTIONS = [{"id": "seed1", "type": "expense", "amount": 90000, "category": "پارچه", "description": "پارچه", "customerId": null, "date": null}, {"id": "seed2", "type": "expense", "amount": 30000, "category": "پارچه", "description": "پارچه، ابن سینا", "customerId": null, "date": null}, {"id": "seed3", "type": "expense", "amount": 25000, "category": "پولک و منجوق", "description": "منجوق، ابن سینا", "customerId": null, "date": null}, {"id": "seed4", "type": "expense", "amount": 120000, "category": "دهانه فلزی", "description": "دهانه فلزی، افاق", "customerId": null, "date": null}, {"id": "seed5", "type": "expense", "amount": 140000, "category": "پارچه", "description": "پارچه مخمل، ابن سینا", "customerId": null, "date": null}, {"id": "seed6", "type": "expense", "amount": 76500, "category": "زانفیکس و لایی چسب", "description": "روبان و لایی چسب، حسین اباد", "customerId": null, "date": null}, {"id": "seed7", "type": "expense", "amount": 105000, "category": "ابزار و ملزومات", "description": "سوزن ته گرد، وحید", "customerId": null, "date": null}, {"id": "seed8", "type": "expense", "amount": 290000, "category": "دهانه فلزی", "description": "دهانه فلزی و روبان، افاق", "customerId": null, "date": null}, {"id": "seed9", "type": "expense", "amount": 99000, "category": "پارچه", "description": "پارچه مخمل، حسین اباد", "customerId": null, "date": null}, {"id": "seed10", "type": "expense", "amount": 29000, "category": "پولک و منجوق", "description": "منجوق و پولک، وحید", "customerId": null, "date": null}, {"id": "seed11", "type": "expense", "amount": 64000, "category": "پولک و منجوق", "description": "پولک و منجوق و نخ نامرئی، حسین آباد", "customerId": null, "date": null}, {"id": "seed12", "type": "expense", "amount": 25000, "category": "زانفیکس و لایی چسب", "description": "لایی چسب", "customerId": null, "date": null}, {"id": "seed13", "type": "expense", "amount": 99000, "category": "ابزار و ملزومات", "description": "روبان", "customerId": null, "date": null}, {"id": "seed14", "type": "expense", "amount": 45000, "category": "ابزار و ملزومات", "description": "متر", "customerId": null, "date": null}, {"id": "seed15", "type": "expense", "amount": 25000, "category": "پولک و منجوق", "description": "پولک، ابن سینا", "customerId": null, "date": null}, {"id": "seed16", "type": "expense", "amount": 90000, "category": "پارچه", "description": "مخمل، ابن سینا", "customerId": null, "date": null}, {"id": "seed17", "type": "expense", "amount": 127000, "category": "کریستال و مروارید", "description": "مروارید، وحید", "customerId": null, "date": null}, {"id": "seed18", "type": "expense", "amount": 5000, "category": "ابزار و ملزومات", "description": "صابون، مادی", "customerId": null, "date": null}, {"id": "seed19", "type": "expense", "amount": 43000, "category": "پولک و منجوق", "description": "پولک و سوزن", "customerId": null, "date": null}, {"id": "seed20", "type": "expense", "amount": 59000, "category": "زانفیکس و لایی چسب", "description": "زانفیکس", "customerId": null, "date": null}, {"id": "seed21", "type": "expense", "amount": 215000, "category": "دهانه فلزی", "description": "دهانه فلزی", "customerId": null, "date": null}, {"id": "seed22", "type": "expense", "amount": 60000, "category": "ابزار و ملزومات", "description": "ابر", "customerId": null, "date": null}, {"id": "seed23", "type": "expense", "amount": 118700, "category": "ابزار و ملزومات", "description": "فوم و چسب", "customerId": null, "date": null}, {"id": "seed24", "type": "expense", "amount": 10000, "category": "پولک و منجوق", "description": "پولک، وحید", "customerId": null, "date": null}, {"id": "seed25", "type": "expense", "amount": 99000, "category": "پولک و منجوق", "description": "پولک، سه راه سیمین", "customerId": null, "date": null}, {"id": "seed26", "type": "expense", "amount": 360000, "category": "پولک و منجوق", "description": "پولک و جورابگیر و زانفیکس، ابن سینا", "customerId": null, "date": null}, {"id": "seed27", "type": "expense", "amount": 256000, "category": "کریستال و مروارید", "description": "منجوق و زانفیکس و کریستال، وحید", "customerId": null, "date": null}, {"id": "seed28", "type": "expense", "amount": 60000, "category": "پولک و منجوق", "description": "پولک، وحید مادی", "customerId": null, "date": null}, {"id": "seed29", "type": "expense", "amount": 25000, "category": "ابزار و ملزومات", "description": "نخ نامرئی، وحید مادی", "customerId": null, "date": null}, {"id": "seed30", "type": "expense", "amount": 600000, "category": "کریستال و مروارید", "description": "پولک و مروارید، سبزه میدون", "customerId": null, "date": null}, {"id": "seed31", "type": "expense", "amount": 400000, "category": "ابزار و ملزومات", "description": "جورابگیر، سبزه میدون", "customerId": null, "date": null}, {"id": "seed32", "type": "expense", "amount": 23000, "category": "ابزار و ملزومات", "description": "صابون مدادی", "customerId": null, "date": null}, {"id": "seed33", "type": "expense", "amount": 2980000, "category": "تبلیغات و مارکتینگ", "description": "دوره عکاسی", "customerId": null, "date": null}, {"id": "seed34", "type": "expense", "amount": 135000, "category": "ابزار و ملزومات", "description": "کاغذ کالک", "customerId": null, "date": null}, {"id": "seed35", "type": "expense", "amount": 675000, "category": "پارچه", "description": "پارچه مخمل، ابن سینا (خرید دوم)", "customerId": null, "date": null}, {"id": "seed36", "type": "expense", "amount": 30000, "category": "ابزار و ملزومات", "description": "خودکار حرارتی", "customerId": null, "date": null}, {"id": "seed37", "type": "expense", "amount": 240000, "category": "زانفیکس و لایی چسب", "description": "نخ نامرئی و لایی چسب ابریشم، ارت", "customerId": null, "date": null}];
+
+const SEED_BOUTIQUES = [{"id": "seedb1", "type": "boutique", "name": "Stush", "email": "", "phone": "+968 9800 3503", "city": "Muscat, Oman", "notes": "امتیاز: 5 | سایت: stushfashion.com", "stage": "پیدا شده"}, {"id": "seedb2", "type": "boutique", "name": "Designer District Boutique", "email": "", "phone": "+968 9430 8211", "city": "Muscat, Oman", "notes": "امتیاز: 4.5 | اینستاگرام: @designer.district.om", "stage": "پیدا شده"}, {"id": "seedb3", "type": "boutique", "name": "HANGERS CONCEPT STORE", "email": "", "phone": "+968 7706 2777", "city": "Muscat, Oman", "notes": "امتیاز: 4.8 | سایت: hangersconceptstore.com", "stage": "پیدا شده"}, {"id": "seedb4", "type": "boutique", "name": "Brands En Tags", "email": "", "phone": "+968 7922 9392", "city": "Muscat, Oman", "notes": "امتیاز: 4.9", "stage": "پیدا شده"}, {"id": "seedb5", "type": "boutique", "name": "Toile Boutique - Athaiba", "email": "", "phone": "+968 9470 0083", "city": "Muscat, Oman", "notes": "امتیاز: 4.6 | اینستاگرام: @toile.om", "stage": "پیدا شده"}, {"id": "seedb6", "type": "boutique", "name": "LADONNA BOUTIQUE", "email": "", "phone": "+968 9799 3343", "city": "Muscat, Oman", "notes": "امتیاز: 4.8", "stage": "پیدا شده"}, {"id": "seedb7", "type": "boutique", "name": "Petra Design Boutique", "email": "", "phone": "", "city": "Muscat, Oman", "notes": "امتیاز: 4.9", "stage": "پیدا شده"}, {"id": "seedb8", "type": "boutique", "name": "Boutique N", "email": "", "phone": "", "city": "Kuwait City, Kuwait", "notes": "امتیاز: 4.3 | سایت: boutiquenkuwait.com | پیام دادی", "stage": "ایمیل ارسال شده"}, {"id": "seedb9", "type": "boutique", "name": "Nass Boutique", "email": "", "phone": "+965 9699 1166", "city": "Kuwait City, Kuwait", "notes": "امتیاز: 4 | سایت: nassboutique.com", "stage": "پیدا شده"}, {"id": "seedb10", "type": "boutique", "name": "Amara Boutique Store", "email": "", "phone": "+965 6097 2187", "city": "Kuwait City, Kuwait", "notes": "سایت: amaraboutiquestorekw.com", "stage": "پیدا شده"}, {"id": "seedb11", "type": "boutique", "name": "AlSafat Saif Art Co.", "email": "", "phone": "+965 6666 8482", "city": "Kuwait City, Kuwait", "notes": "امتیاز: 4.9 | سایت: alsaifat-art-co.lovable.app", "stage": "پیدا شده"}, {"id": "seedb12", "type": "boutique", "name": "LEVANTE LUXURY", "email": "", "phone": "+974 3399 2266", "city": "Doha, Qatar", "notes": "امتیاز: 5 | سایت: levanteluxury.com", "stage": "پیدا شده"}, {"id": "seedb13", "type": "boutique", "name": "La Boutique Blanche", "email": "", "phone": "+974 7090 9122", "city": "Doha, Qatar", "notes": "امتیاز: 4.8 | سایت: laboutique-blanche.com", "stage": "پیدا شده"}, {"id": "seedb14", "type": "boutique", "name": "Naouma", "email": "", "phone": "+974 5141 1551", "city": "Doha, Qatar", "notes": "امتیاز: 4.7 | سایت: naouma.us", "stage": "پیدا شده"}, {"id": "seedb15", "type": "boutique", "name": "Moonlight Concept", "email": "", "phone": "+974 4427 1399", "city": "Doha, Qatar", "notes": "امتیاز: 4.4 | سایت: moonlightconcept.com", "stage": "پیدا شده"}, {"id": "seedb16", "type": "boutique", "name": "Per Lei Couture", "email": "", "phone": "+974 4000 3030", "city": "Doha, Qatar", "notes": "امتیاز: 4.2 | سایت: perleicouture.com", "stage": "پیدا شده"}, {"id": "seedb17", "type": "boutique", "name": "Lalage Beaumont", "email": "", "phone": "+966 53 985 1534", "city": "Riyadh, Saudi Arabia", "notes": "امتیاز: 5 | سایت: lalagebeaumont.com", "stage": "پیدا شده"}, {"id": "seedb18", "type": "boutique", "name": "Personage", "email": "", "phone": "+966 53 801 3824", "city": "Riyadh, Saudi Arabia", "notes": "امتیاز: 4 | سایت: personage.sa", "stage": "پیدا شده"}, {"id": "seedb19", "type": "boutique", "name": "MWAZ", "email": "", "phone": "+966 53 522 1090", "city": "Riyadh, Saudi Arabia", "notes": "امتیاز: 4.3 | سایت: mwazbyline.com", "stage": "پیدا شده"}, {"id": "seedb20", "type": "boutique", "name": "Homegrown Market", "email": "", "phone": "+966 50 307 7540", "city": "Jeddah, Saudi Arabia", "notes": "امتیاز: 4.6 | سایت: homegrownmkt.com", "stage": "پیدا شده"}, {"id": "seedb21", "type": "boutique", "name": "The concept story", "email": "", "phone": "+966 50 083 0056", "city": "Jeddah, Saudi Arabia", "notes": "امتیاز: 4.9 | سایت: theconceptstory.com", "stage": "پیدا شده"}, {"id": "seedb22", "type": "boutique", "name": "Maison Clad Fashion Shop", "email": "", "phone": "+971 56 488 3732", "city": "Dubai, UAE", "notes": "امتیاز: 5 | سایت: maisonclad.com", "stage": "پیدا شده"}, {"id": "seedb23", "type": "boutique", "name": "Serai Collective", "email": "", "phone": "+971 50 584 2800", "city": "Dubai, UAE", "notes": "امتیاز: 5 | سایت: seraicollective.com", "stage": "پیدا شده"}, {"id": "seedb24", "type": "boutique", "name": "Lili Blanc", "email": "", "phone": "+971 4 575 4666", "city": "Dubai, UAE", "notes": "امتیاز: 4.7 | سایت: liliblanc.com", "stage": "پیدا شده"}, {"id": "seedb25", "type": "boutique", "name": "VAO Concept Store", "email": "", "phone": "", "city": "Dubai, UAE", "notes": "امتیاز: 4.5 | سایت: vaoconceptstore.com", "stage": "پیدا شده"}, {"id": "seedb26", "type": "boutique", "name": "O'de Rose Concept Store", "email": "", "phone": "", "city": "Dubai, UAE", "notes": "امتیاز: 4.2", "stage": "پیدا شده"}, {"id": "seedb27", "type": "boutique", "name": "Printemps Doha", "email": "Emacauley@printempsdoha.com", "phone": "", "city": "Doha, Qatar", "notes": "جواب مثبت گرفتی، منتظر تیم خرید", "stage": "در حال مذاکره"}];
+
+async function loadState(){
+  try{ const t = await storageGet('transactions'); state.transactions = t ? JSON.parse(t) : []; }catch(e){ state.transactions = []; }
+  try{ const c = await storageGet('customers'); state.customers = c ? JSON.parse(c) : []; }catch(e){ state.customers = []; }
+  try{ const p = await storageGet('products'); state.products = p ? JSON.parse(p) : []; }catch(e){ state.products = []; }
+  try{ const o = await storageGet('orders'); state.orders = o ? JSON.parse(o) : []; }catch(e){ state.orders = []; }
+
+  // backward compatibility: old customers had no type field
+  state.customers.forEach(c => { if(!c.type) c.type = 'customer'; });
+  // backward compatibility: old transactions had no currency field
+  state.transactions.forEach(t => { if(!t.currency) t.currency = 'toman'; });
+  // backward compatibility: old products had no sale-price currency field
+  state.products.forEach(p => { if(!p.salePriceCurrency) p.salePriceCurrency = 'toman'; });
+
+  try{
+    const r = await storageGet('usd_rate');
+    if(r) exchangeRate = parseFloat(r) || exchangeRate;
+  }catch(e){}
+  document.getElementById('usd-rate-input').value = exchangeRate;
+
+  const alreadySeeded = await storageGet('seeded_purchases_v1');
+  if(!alreadySeeded){
+    const today = new Date().toISOString().slice(0,10);
+    const seeded = SEED_TRANSACTIONS.map(t => ({...t, date: today}));
+    state.transactions = [...seeded, ...state.transactions];
+    await saveTransactions();
+    await storageSet('seeded_purchases_v1', '1');
+  }
+
+  const boutiquesAlreadySeeded = await storageGet('seeded_boutiques_v1');
+  if(!boutiquesAlreadySeeded){
+    state.customers = [...state.customers, ...SEED_BOUTIQUES];
+    await saveCustomers();
+    await storageSet('seeded_boutiques_v1', '1');
+  }
+
+  renderAll();
+}
+
+async function saveTransactions(){ await storageSet('transactions', JSON.stringify(state.transactions)); }
+async function saveCustomers(){ await storageSet('customers', JSON.stringify(state.customers)); }
+async function saveProducts(){ await storageSet('products', JSON.stringify(state.products)); }
+async function saveOrders(){ await storageSet('orders', JSON.stringify(state.orders)); }
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function toToman(t){ return t.currency === 'usd' ? t.amount * exchangeRate : t.amount; }
+function monthKey(d){ const dt = new Date(d); return dt.getFullYear()+'-'+(dt.getMonth()+1); }
+function isThisMonth(d){ return monthKey(d) === monthKey(new Date()); }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function emptyState(title, sub){ return `<div class="empty"><div class="glyph">✦</div>${title}<br><span style="font-size:11.5px">${sub}</span></div>`; }
+
+function renderAll(){
+  renderDashboard();
+  renderAccounting();
+  renderProducts();
+  renderOrders();
+  renderCustomers();
+  populateCategorySelect();
+  populateCustomerSelect();
+  populateOrderSelects();
+}
+
+function renderDashboard(){
+  const txs = state.transactions;
+  const totalIncome = txs.filter(t=>t.type==='income').reduce((s,t)=>s+toToman(t),0);
+  const totalExpense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+toToman(t),0);
+  const monthIncome = txs.filter(t=>t.type==='income' && isThisMonth(t.date)).reduce((s,t)=>s+toToman(t),0);
+  const monthExpense = txs.filter(t=>t.type==='expense' && isThisMonth(t.date)).reduce((s,t)=>s+toToman(t),0);
+
+  document.getElementById('dash-net-month').textContent = fmt(monthIncome - monthExpense);
+  document.getElementById('dash-net-total').textContent = 'سود خالص از ابتدا: ' + fmt(totalIncome - totalExpense);
+  document.getElementById('dash-income-month').textContent = fmtNum(monthIncome);
+  document.getElementById('dash-expense-month').textContent = fmtNum(monthExpense);
+  document.getElementById('dash-customer-count').textContent = fmtNum(state.customers.filter(c=>c.type==='customer').length);
+  document.getElementById('dash-product-count').textContent = fmtNum(state.products.length);
+  document.getElementById('dash-order-pending').textContent = fmtNum(state.orders.filter(o=>o.status!=='تحویل داده شده' && o.status!=='لغو شده').length);
+  document.getElementById('dash-boutique-pending').textContent = fmtNum(state.customers.filter(c=>c.type==='boutique' && c.stage!=='همکاری فعال' && c.stage!=='رد شده').length);
+
+  renderTrend();
+
+  const recent = [...txs].sort((a,b)=> new Date(b.date)-new Date(a.date)).slice(0,5);
+  document.getElementById('recent-count').textContent = txs.length ? `(${fmtNum(txs.length)})` : '';
+  const list = document.getElementById('recent-list');
+  list.innerHTML = '';
+  if(!recent.length){ list.innerHTML = emptyState('هنوز تراکنشی ثبت نشده', 'با دکمه + یه فروش یا هزینه اضافه کن'); }
+  else { recent.forEach(t => list.appendChild(txItemEl(t))); }
+
+  applyPrivacyDisplay();
+}
+
+function renderTrend(){
+  const months = [];
+  const now = new Date();
+  for(let i=5;i>=0;i--){ months.push(new Date(now.getFullYear(), now.getMonth()-i, 1)); }
+  const data = months.map(d=>{
+    const key = monthKey(d);
+    const inc = state.transactions.filter(t=>t.type==='income' && monthKey(t.date)===key).reduce((s,t)=>s+toToman(t),0);
+    const exp = state.transactions.filter(t=>t.type==='expense' && monthKey(t.date)===key).reduce((s,t)=>s+toToman(t),0);
+    return {d, inc, exp};
+  });
+  const max = Math.max(1, ...data.map(x=>Math.max(x.inc,x.exp)));
+  const wrap = document.getElementById('trend-bars');
+  wrap.innerHTML = '';
+  const monthNames = ['فرو','ارد','خرد','تیر','مرد','شهر','مهر','آبا','آذر','دی','بهم','اسف'];
+  data.forEach(x=>{
+    const col = document.createElement('div');
+    col.className = 'trend-col';
+    const incH = Math.max(3, (x.inc/max)*80);
+    const expH = Math.max(3, (x.exp/max)*80);
+    col.innerHTML = `<div class="trend-bar-pair"><div class="trend-bar in" style="height:${incH}px"></div><div class="trend-bar out" style="height:${expH}px"></div></div><div class="m-label">${monthNames[x.d.getMonth()]}</div>`;
+    wrap.appendChild(col);
+  });
+}
+
+function txItemEl(t){
+  const el = document.createElement('div');
+  el.className = 'item';
+  const cust = state.customers.find(c=>c.id===t.customerId);
+  const isConfirming = confirmingId === t.id;
+  const isUsd = t.currency === 'usd';
+  const amountLabel = isUsd
+    ? `$${fmtNum(t.amount)} <span style="font-size:10px; color:var(--ink-soft); font-weight:500;">(${fmtNum(toToman(t))} ت)</span>`
+    : fmtNum(t.amount);
+  el.innerHTML = `
+    <div class="item-icon ${t.type}">${t.type==='income' ? '↓' : '↑'}</div>
+    <div class="item-body">
+      <div class="item-title">${escapeHtml(t.description || t.category)}</div>
+      <div class="item-sub">${escapeHtml(t.category)}${cust ? ' · '+escapeHtml(cust.name) : ''} · ${t.date}</div>
+    </div>
+    ${isConfirming ? `
+      <div class="confirm-row"><button class="yes" data-yes="${t.id}">حذف</button><button class="no" data-no="${t.id}">انصراف</button></div>
+    ` : `
+      <div class="item-amount ${t.type}" style="text-align:left;">${t.type==='expense'?'-':''}${amountLabel}</div>
+      <button class="item-del" data-del="${t.id}" aria-label="حذف">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12"/></svg>
+      </button>
+    `}`;
+  el.querySelectorAll('[data-del]').forEach(b=> b.onclick = ()=>{ confirmingId = t.id; renderDashboard(); renderAccounting(); });
+  el.querySelectorAll('[data-no]').forEach(b=> b.onclick = ()=>{ confirmingId = null; renderDashboard(); renderAccounting(); });
+  el.querySelectorAll('[data-yes]').forEach(b=> b.onclick = async ()=>{
+    state.transactions = state.transactions.filter(x=>x.id!==t.id);
+    confirmingId = null;
+    await saveTransactions();
+    renderAll();
+  });
+  return el;
+}
+
+function renderAccounting(){
+  const list = document.getElementById('acc-list');
+  const txs = [...state.transactions].sort((a,b)=> new Date(b.date)-new Date(a.date));
+  document.getElementById('acc-count').textContent = txs.length ? `(${fmtNum(txs.length)})` : '';
+  list.innerHTML = '';
+  if(!txs.length){ list.innerHTML = emptyState('هنوز چیزی ثبت نشده', 'با دکمه + شروع کن'); return; }
+  txs.forEach(t=> list.appendChild(txItemEl(t)));
+}
+
+/* ---------- PRODUCTS ---------- */
+function prodItemEl(p){
+  const el = document.createElement('div');
+  el.className = 'item';
+  el.style.cursor = 'pointer';
+  const isUsd = p.salePriceCurrency === 'usd';
+  const salePriceToman = isUsd ? (p.salePrice||0) * exchangeRate : (p.salePrice||0);
+  const margin = salePriceToman - (p.costPrice||0);
+  const saleLabel = isUsd ? `$${fmtNum(p.salePrice)} (${fmtNum(salePriceToman)} ت)` : fmtNum(p.salePrice);
+  const isConfirming = confirmingId === 'p-'+p.id;
+  const stock = (p.stock === undefined || p.stock === null || p.stock === '') ? null : parseInt(p.stock);
+  const stockHtml = stock===null ? '' : `<div class="stock-tag ${stock<=1?'low':'ok'}">موجودی: ${fmtNum(stock)} عدد</div>`;
+  const sewnHtml = (p.sewnCount===undefined || p.sewnCount===null || p.sewnCount==='') ? '' : `<div class="stock-tag ok">دوخته‌شده: ${fmtNum(p.sewnCount)} عدد</div>`;
+  const photoHtml = p.photo ? `<img class="item-photo" src="${p.photo}">` : `<div class="item-icon product">👜</div>`;
+  el.innerHTML = `
+    ${photoHtml}
+    <div class="item-body">
+      <div class="item-title">${escapeHtml(p.name)}</div>
+      <div class="item-sub">تمام‌شده: ${fmtNum(p.costPrice)} ت · فروش: ${saleLabel}</div>
+      <div class="margin-tag">سود هر واحد: ${fmt(margin)}</div>
+      ${stockHtml}
+      ${sewnHtml}
+      ${p.collection ? `<div class="collection-tag">${escapeHtml(p.collection)}</div>` : ''}
+    </div>
+    ${isConfirming ? `
+      <div class="confirm-row"><button class="yes" data-pyes="${p.id}">حذف</button><button class="no" data-pno="${p.id}">انصراف</button></div>
+    ` : `
+      <button class="item-del" data-pdel="${p.id}" aria-label="حذف">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12"/></svg>
+      </button>
+    `}`;
+  if(!isConfirming){
+    el.addEventListener('click', (e)=>{
+      if(e.target.closest('[data-pdel]')) return;
+      openProductModal(p);
+    });
+  }
+  el.querySelectorAll('[data-pdel]').forEach(b=> b.onclick = (e)=>{ e.stopPropagation(); confirmingId = 'p-'+p.id; renderProducts(); });
+  el.querySelectorAll('[data-pno]').forEach(b=> b.onclick = (e)=>{ e.stopPropagation(); confirmingId = null; renderProducts(); });
+  el.querySelectorAll('[data-pyes]').forEach(b=> b.onclick = async (e)=>{
+    e.stopPropagation();
+    state.products = state.products.filter(x=>x.id!==p.id);
+    confirmingId = null;
+    await saveProducts();
+    renderAll();
+  });
+  return el;
+}
+function renderProductFilterChips(){
+  const wrap = document.getElementById('prod-filter-chips');
+  const collections = [...new Set(state.products.map(p=>p.collection).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fa'));
+  const options = ['همه', ...collections];
+  if(!options.includes(activeProductFilter)) activeProductFilter = 'همه';
+  wrap.innerHTML = '';
+  if(collections.length === 0){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  options.forEach(opt=>{
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (opt===activeProductFilter ? ' active' : '');
+    btn.textContent = opt;
+    btn.onclick = ()=>{ activeProductFilter = opt; renderProducts(); };
+    wrap.appendChild(btn);
+  });
+}
+function populateCollectionDatalist(){
+  const dl = document.getElementById('collection-options');
+  const collections = [...new Set(state.products.map(p=>p.collection).filter(Boolean))];
+  dl.innerHTML = collections.map(c=>`<option value="${escapeHtml(c)}">`).join('');
+}
+function renderProducts(){
+  renderProductFilterChips();
+  populateCollectionDatalist();
+  const list = document.getElementById('prod-list');
+  let prods = [...state.products];
+  if(activeProductFilter !== 'همه') prods = prods.filter(p=>p.collection === activeProductFilter);
+  prods.sort((a,b)=> a.name.localeCompare(b.name,'fa'));
+  document.getElementById('prod-count').textContent = prods.length ? `(${fmtNum(prods.length)})` : '';
+  list.innerHTML = '';
+  if(!prods.length){ list.innerHTML = emptyState('هنوز محصولی ثبت نشده', 'با دکمه + اولین محصول رو اضافه کن'); return; }
+  prods.forEach(p=> list.appendChild(prodItemEl(p)));
+}
+
+/* ---------- ORDERS ---------- */
+function orderItemEl(o){
+  const el = document.createElement('div');
+  el.className = 'item';
+  const cust = state.customers.find(c=>c.id===o.customerId);
+  const isConfirming = confirmingId === 'o-'+o.id;
+  el.innerHTML = `
+    <div class="item-icon order">📦</div>
+    <div class="item-body">
+      <div class="item-title">${escapeHtml(o.productName)} × ${o.qty}</div>
+      <div class="item-sub">${cust ? escapeHtml(cust.name) : 'بدون مشتری'} · ${o.date}</div>
+      <div style="margin-top:6px;"><span class="badge ${badgeClassForOrder(o.status)}">${escapeHtml(o.status)}</span></div>
+    </div>
+    ${isConfirming ? `
+      <div class="confirm-row"><button class="yes" data-oyes="${o.id}">حذف</button><button class="no" data-ono="${o.id}">انصراف</button></div>
+    ` : `
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+        <div class="item-amount" style="text-align:left;">${o.currency==='usd' ? `$${fmtNum(o.total)}` : fmtNum(o.total)}</div>
+        <button class="item-del" data-odel="${o.id}" aria-label="حذف">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12"/></svg>
+        </button>
+      </div>
+    `}`;
+  if(!isConfirming){
+    const titleRow = el.querySelector('.item-title');
+    const statusWrap = el.querySelector('.item-sub').nextElementSibling;
+    const sel = document.createElement('select');
+    sel.className = 'stage-select';
+    ORDER_STATUSES.forEach(s=>{
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s; if(s===o.status) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = async ()=>{
+      o.status = sel.value;
+      await saveOrders();
+      renderAll();
+    };
+    statusWrap.innerHTML = '';
+    statusWrap.appendChild(sel);
+  }
+  el.querySelectorAll('[data-odel]').forEach(b=> b.onclick = ()=>{ confirmingId = 'o-'+o.id; renderOrders(); });
+  el.querySelectorAll('[data-ono]').forEach(b=> b.onclick = ()=>{ confirmingId = null; renderOrders(); });
+  el.querySelectorAll('[data-oyes]').forEach(b=> b.onclick = async ()=>{
+    state.orders = state.orders.filter(x=>x.id!==o.id);
+    confirmingId = null;
+    await saveOrders();
+    renderAll();
+  });
+  return el;
+}
+function renderOrders(){
+  const list = document.getElementById('order-list');
+  const orders = [...state.orders].sort((a,b)=> new Date(b.date)-new Date(a.date));
+  document.getElementById('order-count').textContent = orders.length ? `(${fmtNum(orders.length)})` : '';
+  list.innerHTML = '';
+  if(!orders.length){ list.innerHTML = emptyState('هنوز سفارشی ثبت نشده', 'با دکمه + اولین سفارش رو ثبت کن'); return; }
+  orders.forEach(o=> list.appendChild(orderItemEl(o)));
+}
+
+/* ---------- CUSTOMERS / BOUTIQUES ---------- */
+function custItemEl(c){
+  const el = document.createElement('div');
+  el.className = 'item';
+  el.style.cursor = 'pointer';
+  const spent = state.transactions.filter(t=>t.customerId===c.id && t.type==='income').reduce((s,t)=>s+toToman(t),0);
+  const isConfirming = confirmingId === 'c-'+c.id;
+  const isBoutique = c.type === 'boutique';
+  el.innerHTML = `
+    <div class="item-icon customer">${escapeHtml((c.name||'؟').slice(0,1))}</div>
+    <div class="item-body">
+      <div class="item-title">${escapeHtml(c.name)}</div>
+      <div class="item-sub">${escapeHtml(c.city||'')}${c.email ? ' · '+escapeHtml(c.email) : ''}${c.phone ? ' · '+escapeHtml(c.phone) : ''}</div>
+      ${spent>0 ? `<div class="customer-total">مجموع خرید: ${fmt(spent)}</div>` : ''}
+      ${isBoutique ? `<div class="stage-wrap" style="margin-top:6px;"></div>` : ''}
+    </div>
+    ${isConfirming ? `
+      <div class="confirm-row"><button class="yes" data-cyes="${c.id}">حذف</button><button class="no" data-cno="${c.id}">انصراف</button></div>
+    ` : `
+      <button class="item-del" data-cdel="${c.id}" aria-label="حذف">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12"/></svg>
+      </button>
+    `}`;
+  if(isBoutique){
+    const wrap = el.querySelector('.stage-wrap');
+    const sel = document.createElement('select');
+    sel.className = 'stage-select';
+    BOUTIQUE_STAGES.forEach(s=>{
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s; if(s===c.stage) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onclick = (e)=> e.stopPropagation();
+    sel.onchange = async (e)=>{ e.stopPropagation(); c.stage = sel.value; await saveCustomers(); renderAll(); };
+    wrap.appendChild(sel);
+  }
+  if(!isConfirming){
+    el.addEventListener('click', (e)=>{
+      if(e.target.closest('[data-cdel]')) return;
+      openCustomerModal(c.type, c);
+    });
+  }
+  el.querySelectorAll('[data-cdel]').forEach(b=> b.onclick = (e)=>{ e.stopPropagation(); confirmingId = 'c-'+c.id; renderCustomers(); });
+  el.querySelectorAll('[data-cno]').forEach(b=> b.onclick = (e)=>{ e.stopPropagation(); confirmingId = null; renderCustomers(); });
+  el.querySelectorAll('[data-cyes]').forEach(b=> b.onclick = async (e)=>{
+    e.stopPropagation();
+    state.customers = state.customers.filter(x=>x.id!==c.id);
+    confirmingId = null;
+    await saveCustomers();
+    renderAll();
+  });
+  return el;
+}
+function renderCustomers(){
+  const list = document.getElementById('cust-list');
+  const filtered = state.customers.filter(c=>c.type===activeCustSub).sort((a,b)=> (a.name||'').localeCompare(b.name||'','fa'));
+  list.innerHTML = '';
+  if(!filtered.length){
+    list.innerHTML = activeCustSub==='customer'
+      ? emptyState('هنوز مشتری‌ای ثبت نشده', 'با دکمه + اولین مشتری رو اضافه کن')
+      : emptyState('هنوز بوتیکی ثبت نشده', 'با دکمه + بوتیک‌های پیدا شده رو اضافه کن');
+    return;
+  }
+  filtered.forEach(c=> list.appendChild(custItemEl(c)));
+}
+
+/* navigation */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.onclick = ()=>{
+    activeView = btn.dataset.view;
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+activeView).classList.add('active');
+  };
+});
+document.getElementById('subtab-customer').onclick = ()=>{
+  activeCustSub = 'customer';
+  document.getElementById('subtab-customer').classList.add('active');
+  document.getElementById('subtab-boutique').classList.remove('active');
+  renderCustomers();
+};
+document.getElementById('subtab-boutique').onclick = ()=>{
+  activeCustSub = 'boutique';
+  document.getElementById('subtab-boutique').classList.add('active');
+  document.getElementById('subtab-customer').classList.remove('active');
+  renderCustomers();
+};
+
+/* FAB */
+document.getElementById('fab-btn').onclick = ()=>{
+  if(activeView === 'customers') openCustomerModal(activeCustSub);
+  else if(activeView === 'products') openProductModal();
+  else if(activeView === 'orders') openOrderModal();
+  else openTxModal();
+};
+
+/* transaction modal */
+function populateCategorySelect(){
+  const sel = document.getElementById('tx-category');
+  const cats = currentTxType === 'income' ? INCOME_CATS : EXPENSE_CATS;
+  sel.innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+function populateCustomerSelect(){
+  const sel = document.getElementById('tx-customer');
+  sel.innerHTML = '<option value="">— بدون مشتری —</option>' +
+    state.customers.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+}
+function setTxType(type){
+  currentTxType = type;
+  document.getElementById('tx-type-income').classList.toggle('on', type==='income');
+  document.getElementById('tx-type-expense').classList.toggle('on', type==='expense');
+  populateCategorySelect();
+  document.getElementById('tx-currency-toggle').style.display = type==='income' ? 'flex' : 'none';
+  if(type !== 'income') setTxCurrency('toman');
+}
+document.getElementById('tx-type-income').onclick = ()=> setTxType('income');
+document.getElementById('tx-type-expense').onclick = ()=> setTxType('expense');
+
+function setTxCurrency(cur){
+  currentTxCurrency = cur;
+  document.getElementById('tx-cur-toman').classList.toggle('on', cur==='toman');
+  document.getElementById('tx-cur-usd').classList.toggle('on', cur==='usd');
+  document.getElementById('tx-amount-label').textContent = cur==='usd' ? 'مبلغ (دلار)' : 'مبلغ (تومان)';
+  document.getElementById('tx-amount').placeholder = cur==='usd' ? 'مثلا ۲۰۰' : 'مثلا ۵۵۰۰۰۰';
+}
+document.getElementById('tx-cur-toman').onclick = ()=> setTxCurrency('toman');
+document.getElementById('tx-cur-usd').onclick = ()=> setTxCurrency('usd');
+
+document.getElementById('usd-rate-input').onchange = async ()=>{
+  const v = parseFloat(document.getElementById('usd-rate-input').value);
+  if(v > 0){ exchangeRate = v; await storageSet('usd_rate', String(v)); renderAll(); }
+};
+
+function openTxModal(){
+  setTxType('income');
+  setTxCurrency('toman');
+  document.getElementById('tx-amount').value = '';
+  document.getElementById('tx-desc').value = '';
+  document.getElementById('tx-date').value = new Date().toISOString().slice(0,10);
+  populateCustomerSelect();
+  document.getElementById('overlay-tx').classList.add('open');
+}
+document.getElementById('tx-cancel').onclick = ()=> document.getElementById('overlay-tx').classList.remove('open');
+document.getElementById('overlay-tx').onclick = (e)=>{ if(e.target.id==='overlay-tx') e.currentTarget.classList.remove('open'); };
+document.getElementById('tx-save').onclick = async ()=>{
+  const amount = parseFloat(document.getElementById('tx-amount').value);
+  if(!amount || amount<=0){ document.getElementById('tx-amount').focus(); return; }
+  const t = {
+    id: uid(), type: currentTxType, amount,
+    currency: currentTxType==='income' ? currentTxCurrency : 'toman',
+    category: document.getElementById('tx-category').value,
+    description: document.getElementById('tx-desc').value.trim(),
+    customerId: document.getElementById('tx-customer').value || null,
+    date: document.getElementById('tx-date').value || new Date().toISOString().slice(0,10)
+  };
+  state.transactions.push(t);
+  await saveTransactions();
+  document.getElementById('overlay-tx').classList.remove('open');
+  renderAll();
+};
+
+/* customer / boutique modal */
+function populateStageSelect(){
+  const sel = document.getElementById('cust-stage');
+  sel.innerHTML = BOUTIQUE_STAGES.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+function openCustomerModal(type, existing){
+  currentCustModalType = existing ? existing.type : type;
+  editingCustomerId = existing ? existing.id : null;
+  const isBoutiqueType = currentCustModalType === 'boutique';
+  document.getElementById('cust-modal-title').textContent = existing
+    ? (isBoutiqueType ? 'ویرایش بوتیک' : 'ویرایش مشتری')
+    : (isBoutiqueType ? 'افزودن بوتیک' : 'افزودن مشتری');
+  document.getElementById('cust-name-label').textContent = isBoutiqueType ? 'نام بوتیک' : 'نام';
+  document.getElementById('cust-name').value = existing ? existing.name : '';
+  document.getElementById('cust-email').value = existing ? (existing.email||'') : '';
+  document.getElementById('cust-phone').value = existing ? (existing.phone||'') : '';
+  document.getElementById('cust-city').value = existing ? (existing.city||'') : '';
+  document.getElementById('cust-notes').value = existing ? (existing.notes||'') : '';
+  document.getElementById('cust-stage-field').style.display = isBoutiqueType ? 'block' : 'none';
+  populateStageSelect();
+  if(existing && isBoutiqueType) document.getElementById('cust-stage').value = existing.stage || BOUTIQUE_STAGES[0];
+  document.getElementById('overlay-cust').classList.add('open');
+}
+document.getElementById('cust-cancel').onclick = ()=> document.getElementById('overlay-cust').classList.remove('open');
+document.getElementById('overlay-cust').onclick = (e)=>{ if(e.target.id==='overlay-cust') e.currentTarget.classList.remove('open'); };
+document.getElementById('cust-save').onclick = async ()=>{
+  const name = document.getElementById('cust-name').value.trim();
+  if(!name){ document.getElementById('cust-name').focus(); return; }
+  const fields = {
+    name, type: currentCustModalType,
+    email: document.getElementById('cust-email').value.trim(),
+    phone: document.getElementById('cust-phone').value.trim(),
+    city: document.getElementById('cust-city').value.trim(),
+    notes: document.getElementById('cust-notes').value.trim(),
+    stage: currentCustModalType==='boutique' ? document.getElementById('cust-stage').value : null
+  };
+  if(editingCustomerId){
+    const idx = state.customers.findIndex(c=>c.id===editingCustomerId);
+    if(idx > -1) state.customers[idx] = { ...state.customers[idx], ...fields };
+  } else {
+    state.customers.push({ id: uid(), ...fields });
+  }
+  await saveCustomers();
+  document.getElementById('overlay-cust').classList.remove('open');
+  renderAll();
+};
+
+/* product modal */
+function setProdCurrency(cur){
+  currentProdCurrency = cur;
+  document.getElementById('prod-cur-toman').classList.toggle('on', cur==='toman');
+  document.getElementById('prod-cur-usd').classList.toggle('on', cur==='usd');
+  document.getElementById('prod-price-label').textContent = cur==='usd' ? 'قیمت فروش (دلار)' : 'قیمت فروش (تومان)';
+  document.getElementById('prod-price').placeholder = cur==='usd' ? 'مثلا ۴۰' : 'مثلا ۹۵۰۰۰۰';
+}
+document.getElementById('prod-cur-toman').onclick = ()=> setProdCurrency('toman');
+document.getElementById('prod-cur-usd').onclick = ()=> setProdCurrency('usd');
+
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w > h){ if(w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; } }
+        else { if(h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function renderProdPhotoPreview(){
+  const wrap = document.getElementById('prod-photo-preview');
+  wrap.innerHTML = currentProductPhoto
+    ? `<img src="${currentProductPhoto}" style="width:64px; height:64px; object-fit:cover; border-radius:10px; border:1px solid var(--line);">`
+    : '';
+}
+document.getElementById('prod-photo').onchange = async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    currentProductPhoto = await compressImage(file, 480, 0.72);
+    renderProdPhotoPreview();
+  }catch(err){ console.error('photo compress failed', err); }
+};
+
+function openProductModal(existing){
+  editingProductId = existing ? existing.id : null;
+  document.getElementById('prod-modal-title').textContent = existing ? 'ویرایش محصول' : 'افزودن محصول';
+  document.getElementById('prod-name').value = existing ? existing.name : '';
+  document.getElementById('prod-collection').value = existing ? (existing.collection||'') : '';
+  document.getElementById('prod-stock').value = existing && existing.stock!=null ? existing.stock : '';
+  document.getElementById('prod-sewn').value = existing && existing.sewnCount!=null ? existing.sewnCount : '';
+  document.getElementById('prod-cost').value = existing ? existing.costPrice : '';
+  document.getElementById('prod-price').value = existing ? existing.salePrice : '';
+  document.getElementById('prod-notes').value = existing ? (existing.notes||'') : '';
+  document.getElementById('prod-photo').value = '';
+  currentProductPhoto = existing ? (existing.photo || null) : null;
+  renderProdPhotoPreview();
+  setProdCurrency(existing && existing.salePriceCurrency==='usd' ? 'usd' : 'toman');
+  populateCollectionDatalist();
+  document.getElementById('overlay-prod').classList.add('open');
+}
+document.getElementById('prod-cancel').onclick = ()=> document.getElementById('overlay-prod').classList.remove('open');
+document.getElementById('overlay-prod').onclick = (e)=>{ if(e.target.id==='overlay-prod') e.currentTarget.classList.remove('open'); };
+document.getElementById('prod-save').onclick = async ()=>{
+  const name = document.getElementById('prod-name').value.trim();
+  if(!name){ document.getElementById('prod-name').focus(); return; }
+  const stockVal = document.getElementById('prod-stock').value;
+  const sewnVal = document.getElementById('prod-sewn').value;
+  const fields = {
+    name,
+    collection: document.getElementById('prod-collection').value.trim(),
+    stock: stockVal === '' ? null : parseInt(stockVal),
+    sewnCount: sewnVal === '' ? null : parseInt(sewnVal),
+    photo: currentProductPhoto,
+    costPrice: parseFloat(document.getElementById('prod-cost').value) || 0,
+    salePrice: parseFloat(document.getElementById('prod-price').value) || 0,
+    salePriceCurrency: currentProdCurrency,
+    notes: document.getElementById('prod-notes').value.trim()
+  };
+  if(editingProductId){
+    const idx = state.products.findIndex(p=>p.id===editingProductId);
+    if(idx > -1) state.products[idx] = { ...state.products[idx], ...fields };
+  } else {
+    state.products.push({ id: uid(), ...fields });
+  }
+  await saveProducts();
+  document.getElementById('overlay-prod').classList.remove('open');
+  renderAll();
+};
+
+/* order modal */
+function populateOrderSelects(){
+  const custSel = document.getElementById('order-customer');
+  custSel.innerHTML = '<option value="">— انتخاب کن —</option>' +
+    state.customers.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  const prodSel = document.getElementById('order-product');
+  prodSel.innerHTML = '<option value="">— انتخاب کن —</option>' +
+    state.products.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  const statusSel = document.getElementById('order-status');
+  statusSel.innerHTML = ORDER_STATUSES.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+document.getElementById('order-product').onchange = ()=>{
+  const p = state.products.find(x=>x.id === document.getElementById('order-product').value);
+  if(p){
+    document.getElementById('order-price').value = p.salePrice;
+    document.getElementById('order-price-label').textContent = p.salePriceCurrency==='usd' ? 'قیمت واحد (دلار)' : 'قیمت واحد (تومان)';
+  }
+};
+function openOrderModal(){
+  populateOrderSelects();
+  document.getElementById('order-qty').value = 1;
+  document.getElementById('order-price').value = '';
+  document.getElementById('order-notes').value = '';
+  document.getElementById('order-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('overlay-order').classList.add('open');
+}
+document.getElementById('order-cancel').onclick = ()=> document.getElementById('overlay-order').classList.remove('open');
+document.getElementById('overlay-order').onclick = (e)=>{ if(e.target.id==='overlay-order') e.currentTarget.classList.remove('open'); };
+document.getElementById('order-save').onclick = async ()=>{
+  const prodId = document.getElementById('order-product').value;
+  const prod = state.products.find(p=>p.id===prodId);
+  const qty = parseInt(document.getElementById('order-qty').value) || 1;
+  const price = parseFloat(document.getElementById('order-price').value) || (prod ? prod.salePrice : 0);
+  if(!prod){ document.getElementById('order-product').focus(); return; }
+  const currency = prod.salePriceCurrency || 'toman';
+  const o = {
+    id: uid(),
+    customerId: document.getElementById('order-customer').value || null,
+    productId: prodId,
+    productName: prod.name,
+    qty, unitPrice: price, total: qty*price, currency,
+    status: document.getElementById('order-status').value,
+    date: document.getElementById('order-date').value || new Date().toISOString().slice(0,10),
+    notes: document.getElementById('order-notes').value.trim()
+  };
+  state.orders.push(o);
+  await saveOrders();
+  document.getElementById('overlay-order').classList.remove('open');
+  renderAll();
+};
+
+loadState();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
